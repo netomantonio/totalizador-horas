@@ -18,6 +18,7 @@ calcularHorasNoturnas = function (horaInicial, horaFinal) {
 calcularHorasPorTurno = function (horaInicioPeriodo, horaFimPeriodo) {
   // instancia duas variáveis auxiliares pois nesta regra considera
   // que o período de trabalho contém horas diurnas e noturnas.
+
   // considerando a regra onde HoraInicial = inicio das horas diurnas
   let horaFimDiurna = new Date(horaInicioPeriodo);
   let horaInicioNoturna = new Date(horaInicioPeriodo);
@@ -43,8 +44,7 @@ calcularHorasPorTurno = function (horaInicioPeriodo, horaFimPeriodo) {
   if (horaInicioPeriodo.getHours() > horaFimPeriodo.getHours()) {
     // Verifica se após o final das horas noturnas existem mais horas diurnas
     if (horaFimPeriodo.getHours() * 60 + horaFimPeriodo.getMinutes() > 300) {
-	  
-	  //delimita o período de horas noturnas
+      //delimita o período de horas noturnas
       horaFinalNoturna = new Date(horaFimPeriodo);
       horaFinalNoturna.setHours(5, 0);
       let { noturna } = calcularHorasNoturnas(
@@ -52,7 +52,7 @@ calcularHorasPorTurno = function (horaInicioPeriodo, horaFimPeriodo) {
         horaFinalNoturna
       );
 
-	  //estabelece um novo período de horas diurnas
+      //estabelece um novo período de horas diurnas
       horaInicioDiurna = new Date(horaFinalNoturna);
       horaInicioDiurna.setHours(5, 1);
       let horaInicioDiurnaExtraEmMinutos = dtt.convertHorasEmMinutos(
@@ -65,9 +65,14 @@ calcularHorasPorTurno = function (horaInicioPeriodo, horaFimPeriodo) {
         horaInicioDiurnaExtraEmMinutos,
         horaFimDiurnaExtraEmMinutos
       );
-	  //incrementa as horas diurnas extras as horas diurnas já calculadas
+      //incrementa as horas diurnas extras as horas diurnas já calculadas
       diurna.horas += horas;
-      diurna.minutos += minutos;
+      if ((diurna.minutos += minutos) >= 60) {
+		  diurna.horas += 1;
+		  diurna.minutos += minutos - 60;
+	  } else {
+		diurna.minutos += minutos;
+	  }
       return { diurna, noturna };
     }
   }
@@ -121,6 +126,34 @@ exports.calcularHoras = function (horaInicioPeriodo, horaFimPeriodo) {
       return { totalHorasDiurnas, totalHorasNoturnas };
     }
   } else {
-    return "falta Completar";
+	//verifica se o período corresponde apenas a horas noturnas
+    if (horaInicialEmMinutos > 1320 && horaFinalEmMinutos <= 300) {
+      horaInicioPeriodo = new Date(horaInicioPeriodo);
+      horaFimPeriodo = new Date(horaFimPeriodo);
+      let { noturna } = calcularHorasNoturnas(
+        horaInicioPeriodo,
+        horaFimPeriodo
+      );
+      //atualização das variáveis de retorno do resultado.
+      totalHorasNoturnas["horas"] = noturna.horas;
+      totalHorasNoturnas["minutos"] = noturna.minutos;
+
+      return { totalHorasDiurnas, totalHorasNoturnas };
+    } else {
+	  // nesse trecho compreende que existe horas diurnas e noturnas
+      // submete os períodos diurno e noturno para extrair quantidade de horas e minutos
+      let { diurna, noturna } = calcularHorasPorTurno(
+        horaInicioPeriodo,
+        horaFimPeriodo
+      );
+
+      //atualização das variáveis de retorno do resultado.
+      totalHorasDiurnas["horas"] = diurna.horas;
+      totalHorasDiurnas["minutos"] = diurna.minutos;
+      totalHorasNoturnas["horas"] = noturna.horas;
+      totalHorasNoturnas["minutos"] = noturna.minutos;
+
+      return { totalHorasDiurnas, totalHorasNoturnas };
+    }
   }
 };
