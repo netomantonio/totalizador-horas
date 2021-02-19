@@ -18,18 +18,18 @@ router.post("/", (req, res) => {
 
   //verifica se requisição vem com os dados necessários
   if (!horarioInicial || !horarioFinal)
-    return res.send({ error: "Dados inconsistentes" });
+    return res.status(403).send({ error: "Dados inconsistentes" });
 
   // verifica se o período informado é maior ou igual a 24hs
   if (periodoEmMinutos >= 1440)
-    return res.send({ error: "Período maior que permitido" });
+    return res.status(403).send({ error: "Período maior que permitido" });
 
   const { totalHorasDiurnas, totalHorasNoturnas } = calcHoras.calcularHoras(
     horarioInicial,
     horarioFinal
   );
 
-  return res.send({ totalHorasDiurnas, totalHorasNoturnas });
+  return res.status(202).send({ totalHorasDiurnas, totalHorasNoturnas });
 });
 
 module.exports = router;
