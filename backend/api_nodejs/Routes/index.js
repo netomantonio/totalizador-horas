@@ -1,59 +1,77 @@
 const express = require('express');
-const convertPeriodoEmMinutos = require('../tools/DateTimeTools');
+dtt = require('../tools/DateTimeTools');
+calcHoras = require('../tools/CalcHours');
 const router = express.Router();
 
 
 router.post('/', (req, res) => {
 
 	const { horarioInicial, horarioFinal } = req.body;
+
+	//atribuindo valor default as variáveis pois em determinadas situações
+	//uma delas não terá necessidade de serem manipuladas
 	let totalHorasDiurnas = { horas: 00, minutos: 00 };
 	let totalHorasNoturnas = { horas: 00, minutos: 00 };
 
+	//verifica se requisição vem com os dados necessários
 	if(!horarioInicial || !horarioFinal) return res.send({ error: 'Dados inconsistentes'});
 
+	//transforma os dados recebidos no tipo Date para facilitar manipulação dos dados.
 	let horaInicioPeriodo = new Date(horarioInicial);
-
 	let horaFimPeriodo = new Date(horarioFinal);
 
-	const periodoEmMinutos = convertPeriodoEmMinutos(horaInicioPeriodo, horaFimPeriodo);
+	//converte os dados do período e horario em minutos para facilitar o controle
+	const periodoEmMinutos = dtt.convertPeriodoEmMinutos(horaInicioPeriodo, horaFimPeriodo);
+	const horaInicialEmMinutos = dtt.convertHorasEmMinutos(horaInicioPeriodo);
+	const horaFinalEmMinutos = dtt.convertHorasEmMinutos(horaFimPeriodo);
 
+	// verifica se o período informado é maior ou igual a 24hs
 	if(periodoEmMinutos >= 1440) return res.send({error: 'Período maior que permitido'});
 
+	//Começa a validação para estabelecer a regra e contabilizar as horas trabalhadas
 
-	if(horaInicioPeriodo.getHours() * 60 + horaInicioPeriodo.getMinutes() > 300 && horaInicioPeriodo.getHours() * 60 + horaInicioPeriodo.getMinutes() <= 1320){
-		console.log(horaInicioPeriodo.getHours());
-		if (horaFimPeriodo.getHours() * 60 + horaFimPeriodo.getMinutes() > 300 && horaFimPeriodo.getHours() * 60 + horaFimPeriodo.getMinutes() <= 1320) {
+	//verifica se o período de trabalho está todo concentrado em horas diurnas
+	//começa verificando se o horario inicial está dentro do range entre 5hs e 22hs
+	if( horaInicialEmMinutos > 300 && horaInicialEmMinutos <= 1320) {
+		//verifica se o horario final está dentro do range de 5hs e 22hs
+		if (horaFinalEmMinutos > 300 && horaFinalEmMinutos <= 1320 && horaInicialEmMinutos < horaFinalEmMinutos) {
+			//Extrai a quantidade de horas e minutos trabalhadas no período
+			let {horas, minutos} = calcHoras.calcularHorasDiurnas(horaInicialEmMinutos, horaFinalEmMinutos);
 
-			let mins = (horaFimPeriodo - horaInicioPeriodo) / umMinuto;
-
-			let h = mins / 60 | 0;
-			let m = mins % 60 | 0;
-
-			totalHorasDiurnas["horas"] = h;
-			totalHorasDiurnas["minutos"] = m;
+			//atualiza somente total de horas diurnas pois a regra não contém horas noturnas
+			totalHorasDiurnas["horas"] = horas;
+			totalHorasDiurnas["minutos"] = minutos;
 
 			return res.send({totalHorasDiurnas, totalHorasNoturnas});
 		} else {
+			// instancia duas variáveis auxiliares pois nesta regra considera
+			// que o período de trabalho contém horas diurnas e noturnas.
+			// considerando a regra onde HoraInicial = inicio das horas diurnas
 			let horaFimDiurna = new Date(horaInicioPeriodo);
 			let horaInicioNoturna = new Date(horaInicioPeriodo);
+
+			//atualiza as duas variáveis para contemplar a regra de negócio
 			horaFimDiurna.setHours(22,00);
 			horaInicioNoturna.setHours(22,01);
-			console.log(horaFimDiurna.getHours())
-			let mins = (horaFimDiurna - horaInicioPeriodo) / umMinuto;
-			let h = mins / 60 | 0;
-			let m = mins % 60 | 0;
-			totalHorasDiurnas["horas"] = h;
-			totalHorasDiurnas["minutos"] = m;
 
-			let mins2 = (horaFimPeriodo - horaInicioNoturna) / umMinuto;
-			let h2 = mins2 / 60 | 0;
-			let m2 = mins2 % 60 | 0;
-			totalHorasNoturnas["horas"] = h2;
-			totalHorasNoturnas["minutos"] = m2;
+			//converte os valores do tipo Date em minutos para facilitar o calculo
+			let horaFimDiurnaEmMinutos = dtt.convertHorasEmMinutos(horaFimDiurna);
+			// let horaInicioNoturnaEmMinutos = dtt.convertHorasEmMinutos(horaInicioNoturna);
 
+			// submete os períodos diurno e noturno para extrair quantidade de horas e minutos
+			let diurna = calcHoras.calcularHorasDiurnas(horaInicialEmMinutos, horaFimDiurnaEmMinutos);
+			let noturna = calcHoras.calcularHorasNoturnas(horaInicioNoturna, horaFimPeriodo);
+
+			//atualização das variáveis de retorno do resultado.
+			totalHorasDiurnas["horas"] = diurna.horas;
+			totalHorasDiurnas["minutos"] = diurna.minutos;
+			totalHorasNoturnas["horas"] = noturna.horas;
+			totalHorasNoturnas["minutos"] = noturna.minutos;
 
 			return res.send({totalHorasDiurnas, totalHorasNoturnas});
 		}
+	} else {
+		
 	}
 })
 
