@@ -6,6 +6,10 @@ const router = express.Router();
 router.post("/", (req, res) => {
   const { horarioInicial, horarioFinal } = req.body;
 
+    //verifica se requisição vem com os dados necessários
+  if (!horarioInicial || !horarioFinal)
+    return res.status(403).send({ error: "Dados inconsistentes" });
+
   //transforma os dados recebidos no tipo Date para facilitar manipulação dos dados.
   let horaInicioPeriodo = new Date(horarioInicial);
   let horaFimPeriodo = new Date(horarioFinal);
@@ -15,11 +19,7 @@ router.post("/", (req, res) => {
     horaInicioPeriodo,
     horaFimPeriodo
   );
-
-  //verifica se requisição vem com os dados necessários
-  if (!horarioInicial || !horarioFinal)
-    return res.status(403).send({ error: "Dados inconsistentes" });
-
+  
   // verifica se o período informado é maior ou igual a 24hs
   if (periodoEmMinutos >= 1440)
     return res.status(403).send({ error: "Período maior que permitido" });
